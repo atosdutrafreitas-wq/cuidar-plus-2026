@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Usuários: lê/escreve o próprio doc
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Idosos: lê/escreve quem pertence à família
+    match /elderly/{elderlyId} {
+      allow read: if request.auth != null && (
+        request.auth.uid == elderlyId ||
+        request.auth.uid == resource.data.familyId
+      );
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && (
+        request.auth.uid == elderlyId ||
+        request.auth.uid == resource.data.familyId
+      );
+    }
+
+    // Medicações: família e o próprio idoso
+    match /medications/{medId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && (
+        request.auth.uid == resource.data.elderlyId ||
+        request.auth.uid == resource.data.familyId
+      );
+    }
+
+    // Logs de medicação
+    match /medication_logs/{logId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+    }
+
+    // Alertas
+    match /alerts/{alertId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow update: if request.auth != null && (
+        request.auth.uid == resource.data.elderlyId ||
+        request.auth.uid == resource.data.familyId
+      );
+    }
+
+    // Perfil QR: leitura pública (escaneamento por médicos/socorristas)
+    match /qr_profiles/{profileId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+
+    // Famílias
+    match /families/{familyId} {
+      allow read, write: if request.auth != null;
+    }
+  }
+}

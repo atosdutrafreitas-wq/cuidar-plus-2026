@@ -1,0 +1,68 @@
+name: cuidar_plus
+description: Plataforma de acompanhamento de medicação para idosos
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Firebase
+  firebase_core: ^2.24.2
+  firebase_auth: ^4.15.3
+  cloud_firestore: ^4.13.6
+  firebase_storage: ^11.5.6
+  firebase_messaging: ^14.7.10
+
+  # Estado
+  flutter_riverpod: ^2.4.9
+  riverpod_annotation: ^2.3.3
+
+  # Navegação
+  go_router: ^13.0.0
+
+  # Notificações locais
+  flutter_local_notifications: ^16.3.0
+
+  # QR Code
+  qr_flutter: ^4.1.0
+  qr_code_scanner: ^1.0.1
+
+  # OCR
+  google_mlkit_text_recognition: ^0.11.0
+
+  # Imagens
+  image_picker: ^1.0.7
+  cached_network_image: ^3.3.1
+
+  # Utilitários
+  intl: ^0.19.0
+  uuid: ^4.3.3
+  shared_preferences: ^2.2.2
+  url_launcher: ^6.2.4
+  permission_handler: ^11.2.0
+  timezone: ^0.9.4
+
+  # UI
+  cupertino_icons: ^1.0.6
+  flutter_svg: ^2.0.9
+  lottie: ^3.0.0
+  shimmer: ^3.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+  build_runner: ^2.4.8
+  riverpod_generator: ^2.3.9
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/fonts/
