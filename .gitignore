@@ -9,7 +9,7 @@ pubspec.lock
 # Firebase
 google-services.json
 GoogleService-Info.plist
-lib/firebase_options.dart
+firebase-sa-key.json
 
 # IDE
 .idea/
