@@ -24,16 +24,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _sendOtp() async {
-    final phone = _phoneController.text.trim();
-    if (phone.length < 10) {
+    final raw = _phoneController.text.trim();
+    final digits = raw.replaceAll(RegExp(r'[^\d+]'), '');
+    if (digits.replaceAll('+', '').length < 10) {
       _showError('Digite um número de telefone válido');
       return;
     }
     setState(() => _loading = true);
-    String formatted = phone;
-    if (!phone.startsWith('+')) {
-      formatted = '+55$phone';
-    }
+    final formatted = digits.startsWith('+') ? digits : '+55$digits';
     await ref.read(authNotifierProvider.notifier).sendOtp(formatted);
     if (!mounted) return;
     setState(() => _loading = false);
