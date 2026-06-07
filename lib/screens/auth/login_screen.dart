@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -34,10 +35,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       formatted = '+55$phone';
     }
     await ref.read(authNotifierProvider.notifier).sendOtp(formatted);
-    if (mounted) {
-      setState(() => _loading = false);
-      context.push('/verify-otp', extra: formatted);
+    if (!mounted) return;
+    setState(() => _loading = false);
+    final state = ref.read(authNotifierProvider);
+    if (state.hasError) {
+      _showError(_friendlyError(state.error));
+      return;
     }
+    context.push('/verify-otp', extra: formatted);
+  }
+
+  String _friendlyError(Object? error) {
+    if (error is FirebaseAuthException) {
+      switch (error.code) {
+        case 'invalid-phone-number':
+          return 'Número de telefone inválido. Verifique o DDD e o número.';
+        case 'too-many-requests':
+          return 'Muitas tentativas. Aguarde alguns minutos e tente novamente.';
+        case 'quota-exceeded':
+          return 'Limite diário de SMS atingido. Tente novamente amanhã.';
+        case 'operation-not-allowed':
+          return 'Login por telefone não está habilitado. Avise o suporte.';
+        default:
+          return error.message ?? 'Não foi possível enviar o código SMS.';
+      }
+    }
+    return 'Não foi possível enviar o código SMS. Tente novamente.';
   }
 
   void _showError(String msg) {

@@ -15,7 +15,7 @@ class AuthService {
   Future<void> sendOtp({
     required String phoneNumber,
     required Function(String verificationId) onCodeSent,
-    required Function(String error) onError,
+    required Function(FirebaseAuthException error) onError,
   }) async {
     await _auth.verifyPhoneNumber(
       phoneNumber: phoneNumber,
@@ -23,7 +23,7 @@ class AuthService {
         await _auth.signInWithCredential(credential);
       },
       verificationFailed: (FirebaseAuthException e) {
-        onError(e.message ?? 'Erro na verificação');
+        onError(e);
       },
       codeSent: (String verificationId, int? resendToken) {
         _verificationId = verificationId;
