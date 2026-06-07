@@ -109,7 +109,7 @@ class AppTheme {
           labelLarge: TextStyle(
               fontSize: 18, fontWeight: FontWeight.bold, color: textDark),
         ),
-        cardTheme: CardTheme(
+        cardTheme: CardThemeData(
           elevation: 3,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
