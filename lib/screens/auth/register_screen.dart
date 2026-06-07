@@ -40,15 +40,30 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       return;
     }
     setState(() => _loading = true);
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
-    final phone = FirebaseAuth.instance.currentUser?.phoneNumber ?? '';
-    await ref.read(authNotifierProvider.notifier).createProfile(
-          uid: uid,
-          phone: phone,
-          name: name,
-          role: _selectedRole,
-        );
-    if (mounted) context.go('/home');
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      final phone = FirebaseAuth.instance.currentUser?.phoneNumber ?? '';
+      if (uid == null) {
+        throw Exception('Sessão expirada. Faça login novamente.');
+      }
+      await ref.read(authNotifierProvider.notifier).createProfile(
+            uid: uid,
+            phone: phone,
+            name: name,
+            role: _selectedRole,
+          );
+      if (mounted) context.go('/home');
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Não foi possível criar o perfil: $e',
+              style: const TextStyle(fontSize: 16)),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override

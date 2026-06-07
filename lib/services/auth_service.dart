@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/constants.dart';
@@ -17,23 +18,28 @@ class AuthService {
     required Function(String verificationId) onCodeSent,
     required Function(FirebaseAuthException error) onError,
   }) async {
+    final completer = Completer<void>();
     await _auth.verifyPhoneNumber(
       phoneNumber: phoneNumber,
       verificationCompleted: (PhoneAuthCredential credential) async {
         await _auth.signInWithCredential(credential);
+        if (!completer.isCompleted) completer.complete();
       },
       verificationFailed: (FirebaseAuthException e) {
         onError(e);
+        if (!completer.isCompleted) completer.complete();
       },
       codeSent: (String verificationId, int? resendToken) {
         _verificationId = verificationId;
         onCodeSent(verificationId);
+        if (!completer.isCompleted) completer.complete();
       },
       codeAutoRetrievalTimeout: (String verificationId) {
         _verificationId = verificationId;
       },
       timeout: const Duration(seconds: 60),
     );
+    await completer.future;
   }
 
   Future<UserCredential?> verifyOtp(String smsCode) async {
