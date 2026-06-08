@@ -4,8 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/auth_provider.dart';
 import '../screens/auth/login_screen.dart';
-import '../screens/auth/verify_otp_screen.dart';
 import '../screens/auth/register_screen.dart';
+import '../screens/admin/invite_keys_screen.dart';
 import '../screens/home/elderly_home_screen.dart';
 import '../screens/home/family_home_screen.dart';
 import '../screens/medications/medication_list_screen.dart';
@@ -31,7 +31,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (isLoading) return '/splash';
 
-      final authPaths = ['/login', '/verify-otp', '/register', '/splash'];
+      final authPaths = ['/login', '/register', '/splash'];
       final isAuthPath = authPaths.any((p) => path.startsWith(p));
 
       if (!isLoggedIn && !isAuthPath) return '/login';
@@ -42,14 +42,8 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: '/splash', builder: (_, __) => const SplashScreen()),
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
-      GoRoute(
-        path: '/verify-otp',
-        builder: (_, state) {
-          final phone = state.extra as String? ?? '';
-          return VerifyOtpScreen(phoneNumber: phone);
-        },
-      ),
       GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
+      GoRoute(path: '/admin/keys', builder: (_, __) => const InviteKeysScreen()),
       GoRoute(path: '/home', builder: (_, __) => const ElderlyHomeScreen()),
       GoRoute(
           path: '/family-home', builder: (_, __) => const FamilyHomeScreen()),

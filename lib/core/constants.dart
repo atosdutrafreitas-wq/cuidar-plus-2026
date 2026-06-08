@@ -13,6 +13,7 @@ class AppConstants {
   static const String caregiversCollection = 'caregivers';
   static const String reportsCollection = 'reports';
   static const String qrProfilesCollection = 'qr_profiles';
+  static const String inviteKeysCollection = 'invite_keys';
 
   // Alert default config (minutes)
   static const int alertBefore30Min = 30;

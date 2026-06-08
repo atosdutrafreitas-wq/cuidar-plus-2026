@@ -14,51 +14,56 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _phoneController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
   bool _loading = false;
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
-    _phoneController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
-  Future<void> _sendOtp() async {
-    final raw = _phoneController.text.trim();
-    final digits = raw.replaceAll(RegExp(r'[^\d+]'), '');
-    if (digits.replaceAll('+', '').length < 10) {
-      _showError('Digite um número de telefone válido');
+  Future<void> _signIn() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    if (email.isEmpty || !email.contains('@')) {
+      _showError('Digite um e-mail válido');
       return;
     }
+    if (password.isEmpty) {
+      _showError('Digite sua senha');
+      return;
+    }
+
     setState(() => _loading = true);
-    final formatted = digits.startsWith('+') ? digits : '+55$digits';
-    await ref.read(authNotifierProvider.notifier).sendOtp(formatted);
-    if (!mounted) return;
-    setState(() => _loading = false);
-    final state = ref.read(authNotifierProvider);
-    if (state.hasError) {
-      _showError(_friendlyError(state.error));
-      return;
+    try {
+      await ref.read(authNotifierProvider.notifier).signIn(email: email, password: password);
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      _showError(_friendlyError(e));
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
-    context.push('/verify-otp', extra: formatted);
   }
 
-  String _friendlyError(Object? error) {
-    if (error is FirebaseAuthException) {
-      switch (error.code) {
-        case 'invalid-phone-number':
-          return 'Número de telefone inválido. Verifique o DDD e o número.';
-        case 'too-many-requests':
-          return 'Muitas tentativas. Aguarde alguns minutos e tente novamente.';
-        case 'quota-exceeded':
-          return 'Limite diário de SMS atingido. Tente novamente amanhã.';
-        case 'operation-not-allowed':
-          return 'Login por telefone não está habilitado. Avise o suporte.';
-        default:
-          return error.message ?? 'Não foi possível enviar o código SMS.';
-      }
+  String _friendlyError(FirebaseAuthException error) {
+    switch (error.code) {
+      case 'user-not-found':
+      case 'invalid-credential':
+      case 'wrong-password':
+        return 'E-mail ou senha incorretos.';
+      case 'invalid-email':
+        return 'E-mail inválido.';
+      case 'user-disabled':
+        return 'Esta conta foi desativada. Avise o suporte.';
+      case 'too-many-requests':
+        return 'Muitas tentativas. Aguarde alguns minutos e tente novamente.';
+      default:
+        return error.message ?? 'Não foi possível entrar. Tente novamente.';
     }
-    return 'Não foi possível enviar o código SMS. Tente novamente.';
   }
 
   void _showError(String msg) {
@@ -103,38 +108,54 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ),
               const SizedBox(height: 48),
-              const Text('Número de telefone',
+              const Text('E-mail',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
               TextField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
                 style: const TextStyle(fontSize: 22),
                 decoration: const InputDecoration(
-                  hintText: '(51) 99999-9999',
-                  prefixIcon: Icon(Icons.phone, size: 28),
-                  prefixText: '+55 ',
-                  prefixStyle: TextStyle(fontSize: 20, color: AppTheme.primary),
+                  hintText: 'seuemail@exemplo.com',
+                  prefixIcon: Icon(Icons.email, size: 28),
                 ),
               ),
-              const SizedBox(height: 8),
-              const Text(
-                'Você receberá um código SMS para confirmar',
-                style: TextStyle(fontSize: 16, color: AppTheme.textMedium),
+              const SizedBox(height: 28),
+              const Text('Senha',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                style: const TextStyle(fontSize: 22),
+                decoration: InputDecoration(
+                  hintText: '••••••••',
+                  prefixIcon: const Icon(Icons.lock, size: 28),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                      size: 26,
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                ),
               ),
               const SizedBox(height: 40),
               BigButton(
-                label: _loading ? 'Enviando...' : 'Receber código SMS',
-                icon: Icons.sms,
-                onPressed: _loading ? null : _sendOtp,
+                label: _loading ? 'Entrando...' : 'Entrar',
+                icon: Icons.login,
+                onPressed: _loading ? null : _signIn,
                 loading: _loading,
               ),
-              const SizedBox(height: 8),
-              const Center(
-                child: Text(
-                  'Não tem conta? É só confirmar seu número acima\nque criamos uma para você automaticamente.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 15, color: AppTheme.textMedium),
+              const SizedBox(height: 20),
+              Center(
+                child: TextButton(
+                  onPressed: () => context.push('/register'),
+                  child: const Text(
+                    'Tenho uma chave de convite — criar conta',
+                    style: TextStyle(fontSize: 17, color: AppTheme.primary),
+                  ),
                 ),
               ),
             ],

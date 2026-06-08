@@ -35,7 +35,7 @@ class ProfileScreen extends ConsumerWidget {
                   style: const TextStyle(
                       fontSize: 26, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-              Text(profile?.phone ?? '',
+              Text(profile?.email ?? '',
                   style: const TextStyle(
                       fontSize: 18, color: AppTheme.textMedium)),
               const SizedBox(height: 4),
@@ -66,6 +66,12 @@ class ProfileScreen extends ConsumerWidget {
                 label: 'Alertas',
                 onTap: () => context.push('/alerts'),
               ),
+              if (profile?.role == 'admin')
+                _MenuItem(
+                  icon: Icons.vpn_key,
+                  label: 'Chaves de convite (admin)',
+                  onTap: () => context.push('/admin/keys'),
+                ),
               const SizedBox(height: 32),
               BigButton(
                 label: 'Sair da conta',
@@ -100,6 +106,8 @@ class _RoleChip extends StatelessWidget {
         return 'Familiar';
       case 'caregiver':
         return 'Cuidador(a)';
+      case 'admin':
+        return 'Administrador';
       default:
         return 'Usuário';
     }

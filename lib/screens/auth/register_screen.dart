@@ -16,8 +16,12 @@ class RegisterScreen extends ConsumerStatefulWidget {
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+  final _keyController = TextEditingController();
   String _selectedRole = AppConstants.roleElderly;
   bool _loading = false;
+  bool _obscurePassword = true;
 
   final _roles = [
     {'value': AppConstants.roleElderly, 'label': 'Sou o idoso', 'icon': Icons.elderly},
@@ -28,42 +32,91 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   @override
   void dispose() {
     _nameController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    _keyController.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
     final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+    final inviteKey = _keyController.text.trim().toUpperCase();
+
     if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Digite seu nome completo', style: TextStyle(fontSize: 16))),
-      );
+      _showError('Digite seu nome completo');
       return;
     }
+    if (email.isEmpty || !email.contains('@')) {
+      _showError('Digite um e-mail válido');
+      return;
+    }
+    if (password.length < 6) {
+      _showError('A senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+    if (inviteKey.isEmpty) {
+      _showError('Digite a chave de convite que você recebeu');
+      return;
+    }
+
     setState(() => _loading = true);
+    final notifier = ref.read(authNotifierProvider.notifier);
     try {
+      await notifier.signUp(email: email, password: password);
       final uid = FirebaseAuth.instance.currentUser?.uid;
-      final phone = FirebaseAuth.instance.currentUser?.phoneNumber ?? '';
       if (uid == null) {
-        throw Exception('Sessão expirada. Faça login novamente.');
+        throw Exception('Não foi possível criar sua conta. Tente novamente.');
       }
-      await ref.read(authNotifierProvider.notifier).createProfile(
-            uid: uid,
-            phone: phone,
-            name: name,
-            role: _selectedRole,
-          );
-      if (mounted) context.go('/home');
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Não foi possível criar o perfil: $e',
-              style: const TextStyle(fontSize: 16)),
-        ),
+      await notifier.createProfileWithInviteKey(
+        uid: uid,
+        email: email,
+        name: name,
+        role: _selectedRole,
+        inviteKeyCode: inviteKey,
       );
+      if (mounted) context.go('/home');
+    } on FirebaseAuthException catch (e) {
+      await _abortSignUp();
+      if (!mounted) return;
+      _showError(_friendlyAuthError(e));
+    } catch (e) {
+      await _abortSignUp();
+      if (!mounted) return;
+      _showError('Não foi possível criar sua conta: $e');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  /// Se o cadastro do perfil falhar (ex: chave inválida) depois da conta de
+  /// autenticação já ter sido criada, desfaz a conta para permitir nova tentativa.
+  Future<void> _abortSignUp() async {
+    try {
+      await FirebaseAuth.instance.currentUser?.delete();
+    } catch (_) {
+      await FirebaseAuth.instance.signOut();
+    }
+  }
+
+  String _friendlyAuthError(FirebaseAuthException error) {
+    switch (error.code) {
+      case 'email-already-in-use':
+        return 'Este e-mail já está cadastrado. Tente entrar na tela de login.';
+      case 'invalid-email':
+        return 'E-mail inválido.';
+      case 'weak-password':
+        return 'Senha muito fraca. Use pelo menos 6 caracteres.';
+      default:
+        return error.message ?? 'Não foi possível criar sua conta.';
+    }
+  }
+
+  void _showError(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg, style: const TextStyle(fontSize: 16))),
+    );
   }
 
   @override
@@ -76,6 +129,24 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              const Text('Chave de convite',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 6),
+              const Text(
+                'Pergunte ao responsável pela família o código que ele recebeu',
+                style: TextStyle(fontSize: 15, color: AppTheme.textMedium),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _keyController,
+                textCapitalization: TextCapitalization.characters,
+                style: const TextStyle(fontSize: 22, letterSpacing: 2),
+                decoration: const InputDecoration(
+                  hintText: 'Ex: ABC123XY',
+                  prefixIcon: Icon(Icons.vpn_key, size: 28),
+                ),
+              ),
+              const SizedBox(height: 32),
               const Text('Seu nome completo',
                   style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
@@ -86,6 +157,40 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 decoration: const InputDecoration(
                   hintText: 'Ex: Maria da Silva',
                   prefixIcon: Icon(Icons.person, size: 28),
+                ),
+              ),
+              const SizedBox(height: 32),
+              const Text('E-mail',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                style: const TextStyle(fontSize: 22),
+                decoration: const InputDecoration(
+                  hintText: 'seuemail@exemplo.com',
+                  prefixIcon: Icon(Icons.email, size: 28),
+                ),
+              ),
+              const SizedBox(height: 32),
+              const Text('Crie uma senha',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                style: const TextStyle(fontSize: 22),
+                decoration: InputDecoration(
+                  hintText: 'Pelo menos 6 caracteres',
+                  prefixIcon: const Icon(Icons.lock, size: 28),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword ? Icons.visibility : Icons.visibility_off,
+                      size: 26,
+                    ),
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                  ),
                 ),
               ),
               const SizedBox(height: 36),

@@ -1,54 +1,28 @@
-import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/constants.dart';
 import '../models/user_model.dart';
+import '../models/invite_key_model.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  String? _verificationId;
-
   Stream<User?> get authStateChanges => _auth.authStateChanges();
   User? get currentUser => _auth.currentUser;
 
-  Future<void> sendOtp({
-    required String phoneNumber,
-    required Function(String verificationId) onCodeSent,
-    required Function(FirebaseAuthException error) onError,
-  }) async {
-    final completer = Completer<void>();
-    await _auth.verifyPhoneNumber(
-      phoneNumber: phoneNumber,
-      verificationCompleted: (PhoneAuthCredential credential) async {
-        await _auth.signInWithCredential(credential);
-        if (!completer.isCompleted) completer.complete();
-      },
-      verificationFailed: (FirebaseAuthException e) {
-        onError(e);
-        if (!completer.isCompleted) completer.complete();
-      },
-      codeSent: (String verificationId, int? resendToken) {
-        _verificationId = verificationId;
-        onCodeSent(verificationId);
-        if (!completer.isCompleted) completer.complete();
-      },
-      codeAutoRetrievalTimeout: (String verificationId) {
-        _verificationId = verificationId;
-      },
-      timeout: const Duration(seconds: 60),
-    );
-    await completer.future;
+  Future<UserCredential> signUp({
+    required String email,
+    required String password,
+  }) {
+    return _auth.createUserWithEmailAndPassword(email: email, password: password);
   }
 
-  Future<UserCredential?> verifyOtp(String smsCode) async {
-    if (_verificationId == null) return null;
-    final credential = PhoneAuthProvider.credential(
-      verificationId: _verificationId!,
-      smsCode: smsCode,
-    );
-    return await _auth.signInWithCredential(credential);
+  Future<UserCredential> signIn({
+    required String email,
+    required String password,
+  }) {
+    return _auth.signInWithEmailAndPassword(email: email, password: password);
   }
 
   Future<UserModel?> getUserProfile(String uid) async {
@@ -77,4 +51,29 @@ class AuthService {
   }
 
   bool get isLoggedIn => currentUser != null;
+
+  /// Valida e consome uma chave de convite numa transação atômica,
+  /// retornando o familyId vinculado a ela.
+  Future<String> consumeInviteKey(String code) async {
+    final ref = _db.collection(AppConstants.inviteKeysCollection).doc(code);
+    return _db.runTransaction<String>((tx) async {
+      final snap = await tx.get(ref);
+      if (!snap.exists) {
+        throw Exception('Chave de convite inválida.');
+      }
+      final key = InviteKeyModel.fromFirestore(snap);
+      if (!key.isAvailable) {
+        throw Exception('Esta chave atingiu o limite de cadastros ou foi desativada.');
+      }
+      tx.update(ref, {'usedCount': key.usedCount + 1});
+      return key.familyId ?? '';
+    });
+  }
+
+  Future<InviteKeyModel?> lookupInviteKey(String code) async {
+    final doc =
+        await _db.collection(AppConstants.inviteKeysCollection).doc(code).get();
+    if (!doc.exists) return null;
+    return InviteKeyModel.fromFirestore(doc);
+  }
 }

@@ -18,7 +18,6 @@ final currentUserProfileProvider =
 
 class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
   final AuthService _service;
-  String? _verificationId;
 
   AuthNotifier(this._service) : super(const AsyncValue.loading()) {
     _init();
@@ -39,34 +38,29 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
     });
   }
 
-  Future<void> sendOtp(String phone) async {
-    await _service.sendOtp(
-      phoneNumber: phone,
-      onCodeSent: (id) => _verificationId = id,
-      onError: (e) => state = AsyncValue.error(e, StackTrace.current),
-    );
+  Future<void> signUp({required String email, required String password}) async {
+    await _service.signUp(email: email, password: password);
   }
 
-  Future<bool> verifyOtp(String code) async {
-    try {
-      final credential = await _service.verifyOtp(code);
-      return credential != null;
-    } catch (e) {
-      return false;
-    }
+  Future<void> signIn({required String email, required String password}) async {
+    await _service.signIn(email: email, password: password);
   }
 
-  Future<void> createProfile({
+  /// Cria o perfil consumindo uma chave de convite (define a família automaticamente).
+  Future<void> createProfileWithInviteKey({
     required String uid,
-    required String phone,
+    required String email,
     required String name,
     required String role,
+    required String inviteKeyCode,
   }) async {
+    final familyId = await _service.consumeInviteKey(inviteKeyCode);
     final user = UserModel(
       id: uid,
-      phone: phone,
+      email: email,
       name: name,
       role: role,
+      familyId: familyId.isEmpty ? null : familyId,
       createdAt: DateTime.now(),
     );
     await _service.createUserProfile(user);

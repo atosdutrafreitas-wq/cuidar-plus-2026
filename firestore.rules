@@ -2,9 +2,30 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Usuários: lê/escreve o próprio doc
+    function isAdmin() {
+      return request.auth != null &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Usuários: lê/escreve o próprio doc; admin lê todos
     match /users/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isAdmin();
+    }
+
+    // Chaves de convite: leitura para validar no cadastro; só admin cria/gerencia;
+    // consumo (usedCount +1) liberado para qualquer autenticado, dentro do limite
+    match /invite_keys/{code} {
+      allow get: if request.auth != null;
+      allow list: if isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || (
+        request.auth != null &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['usedCount']) &&
+        request.resource.data.usedCount == resource.data.usedCount + 1 &&
+        resource.data.usedCount < resource.data.maxUses &&
+        resource.data.active == true
+      );
     }
 
     // Idosos: lê/escreve quem pertence à família
