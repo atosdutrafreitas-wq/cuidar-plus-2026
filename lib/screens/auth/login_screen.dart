@@ -129,14 +129,12 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 onPressed: _loading ? null : _sendOtp,
                 loading: _loading,
               ),
-              const SizedBox(height: 20),
-              Center(
-                child: TextButton(
-                  onPressed: () => context.push('/register'),
-                  child: const Text(
-                    'Criar nova conta',
-                    style: TextStyle(fontSize: 18, color: AppTheme.primary),
-                  ),
+              const SizedBox(height: 8),
+              const Center(
+                child: Text(
+                  'Não tem conta? É só confirmar seu número acima\nque criamos uma para você automaticamente.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 15, color: AppTheme.textMedium),
                 ),
               ),
             ],
