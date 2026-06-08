@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../core/constants.dart';
 
 class UserModel {
   final String id;
@@ -9,6 +10,8 @@ class UserModel {
   final String? familyId;
   final String? photoUrl;
   final DateTime createdAt;
+  final String consentVersion;
+  final DateTime? consentAt;
 
   UserModel({
     required this.id,
@@ -19,7 +22,13 @@ class UserModel {
     this.familyId,
     this.photoUrl,
     required this.createdAt,
+    this.consentVersion = '',
+    this.consentAt,
   });
+
+  /// LGPD: indica se o usuário aceitou a versão vigente da Política de Privacidade.
+  bool get hasCurrentConsent =>
+      consentAt != null && consentVersion == AppConstants.privacyPolicyVersion;
 
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
@@ -32,6 +41,8 @@ class UserModel {
       familyId: data['familyId'],
       photoUrl: data['photoUrl'],
       createdAt: (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      consentVersion: data['consentVersion'] ?? '',
+      consentAt: (data['consentAt'] as Timestamp?)?.toDate(),
     );
   }
 
@@ -43,6 +54,8 @@ class UserModel {
         'familyId': familyId,
         'photoUrl': photoUrl,
         'createdAt': Timestamp.fromDate(createdAt),
+        'consentVersion': consentVersion,
+        'consentAt': consentAt == null ? null : Timestamp.fromDate(consentAt!),
       };
 
   UserModel copyWith({
@@ -60,5 +73,7 @@ class UserModel {
         familyId: familyId ?? this.familyId,
         photoUrl: photoUrl ?? this.photoUrl,
         createdAt: createdAt,
+        consentVersion: consentVersion,
+        consentAt: consentAt,
       );
 }

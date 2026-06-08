@@ -158,6 +158,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                 ),
               ),
+              Center(
+                child: TextButton(
+                  onPressed: () => context.push('/privacy-policy'),
+                  child: const Text(
+                    'Política de Privacidade',
+                    style: TextStyle(fontSize: 15, color: AppTheme.textMedium),
+                  ),
+                ),
+              ),
             ],
           ),
         ),

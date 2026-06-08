@@ -53,6 +53,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
     required String name,
     required String role,
     required String inviteKeyCode,
+    required String consentVersion,
   }) async {
     final familyId = await _service.consumeInviteKey(inviteKeyCode);
     final user = UserModel(
@@ -62,6 +63,8 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
       role: role,
       familyId: familyId.isEmpty ? null : familyId,
       createdAt: DateTime.now(),
+      consentVersion: consentVersion,
+      consentAt: DateTime.now(),
     );
     await _service.createUserProfile(user);
     state = AsyncValue.data(user);
@@ -71,6 +74,18 @@ class AuthNotifier extends StateNotifier<AsyncValue<UserModel?>> {
     await _service.signOut();
     state = const AsyncValue.data(null);
   }
+
+  /// LGPD: reautentica antes de operações sensíveis.
+  Future<void> reauthenticate(String password) => _service.reauthenticate(password);
+
+  /// LGPD (direito de eliminação): apaga o perfil e a conta do usuário.
+  Future<void> deleteAccount() async {
+    await _service.deleteAccount();
+    state = const AsyncValue.data(null);
+  }
+
+  /// LGPD (direito de acesso/portabilidade): retorna os dados pessoais do usuário.
+  Future<Map<String, dynamic>> exportUserData() => _service.exportUserData();
 }
 
 final authNotifierProvider =

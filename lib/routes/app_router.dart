@@ -6,6 +6,7 @@ import '../providers/auth_provider.dart';
 import '../screens/auth/login_screen.dart';
 import '../screens/auth/register_screen.dart';
 import '../screens/admin/invite_keys_screen.dart';
+import '../screens/legal/privacy_policy_screen.dart';
 import '../screens/home/elderly_home_screen.dart';
 import '../screens/home/family_home_screen.dart';
 import '../screens/medications/medication_list_screen.dart';
@@ -31,7 +32,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (isLoading) return '/splash';
 
-      final authPaths = ['/login', '/register', '/splash'];
+      final authPaths = ['/login', '/register', '/splash', '/privacy-policy'];
       final isAuthPath = authPaths.any((p) => path.startsWith(p));
 
       if (!isLoggedIn && !isAuthPath) return '/login';
@@ -44,6 +45,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/login', builder: (_, __) => const LoginScreen()),
       GoRoute(path: '/register', builder: (_, __) => const RegisterScreen()),
       GoRoute(path: '/admin/keys', builder: (_, __) => const InviteKeysScreen()),
+      GoRoute(path: '/privacy-policy', builder: (_, __) => const PrivacyPolicyScreen()),
       GoRoute(path: '/home', builder: (_, __) => const ElderlyHomeScreen()),
       GoRoute(
           path: '/family-home', builder: (_, __) => const FamilyHomeScreen()),

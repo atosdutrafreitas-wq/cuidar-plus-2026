@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +7,7 @@ import '../../core/constants.dart';
 import '../../core/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../widgets/big_button.dart';
+import '../legal/privacy_policy_screen.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
@@ -22,6 +24,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   String _selectedRole = AppConstants.roleElderly;
   bool _loading = false;
   bool _obscurePassword = true;
+  bool _acceptedPrivacyPolicy = false;
 
   final _roles = [
     {'value': AppConstants.roleElderly, 'label': 'Sou o idoso', 'icon': Icons.elderly},
@@ -60,6 +63,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       _showError('Digite a chave de convite que você recebeu');
       return;
     }
+    if (!_acceptedPrivacyPolicy) {
+      _showError('Para continuar, você precisa ler e aceitar a Política de Privacidade');
+      return;
+    }
 
     setState(() => _loading = true);
     final notifier = ref.read(authNotifierProvider.notifier);
@@ -75,6 +82,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         name: name,
         role: _selectedRole,
         inviteKeyCode: inviteKey,
+        consentVersion: AppConstants.privacyPolicyVersion,
       );
       if (mounted) context.go('/home');
     } on FirebaseAuthException catch (e) {
@@ -204,7 +212,55 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     onTap: () =>
                         setState(() => _selectedRole = role['value'] as String),
                   )),
-              const SizedBox(height: 40),
+              const SizedBox(height: 28),
+              InkWell(
+                onTap: () => setState(() => _acceptedPrivacyPolicy = !_acceptedPrivacyPolicy),
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Checkbox(
+                        value: _acceptedPrivacyPolicy,
+                        onChanged: (v) =>
+                            setState(() => _acceptedPrivacyPolicy = v ?? false),
+                      ),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 12),
+                          child: RichText(
+                            text: TextSpan(
+                              style: const TextStyle(fontSize: 16, color: AppTheme.textDark),
+                              children: [
+                                const TextSpan(text: 'Li e aceito a '),
+                                TextSpan(
+                                  text: 'Política de Privacidade',
+                                  style: const TextStyle(
+                                    color: AppTheme.primary,
+                                    fontWeight: FontWeight.bold,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                  recognizer: TapGestureRecognizer()
+                                    ..onTap = () => Navigator.of(context).push(
+                                          MaterialPageRoute(
+                                            builder: (_) => const PrivacyPolicyScreen(),
+                                          ),
+                                        ),
+                                ),
+                                const TextSpan(
+                                    text: ', incluindo a coleta de dados de saúde para uso do app.'),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
               BigButton(
                 label: _loading ? 'Salvando...' : 'Entrar no Cuidar+',
                 icon: Icons.favorite,

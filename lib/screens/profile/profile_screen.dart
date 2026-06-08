@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/theme.dart';
@@ -72,7 +74,29 @@ class ProfileScreen extends ConsumerWidget {
                   label: 'Chaves de convite (admin)',
                   onTap: () => context.push('/admin/keys'),
                 ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 12),
+              const Text('Privacidade e dados (LGPD)',
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.textMedium)),
+              const SizedBox(height: 12),
+              _MenuItem(
+                icon: Icons.privacy_tip,
+                label: 'Política de Privacidade',
+                onTap: () => context.push('/privacy-policy'),
+              ),
+              _MenuItem(
+                icon: Icons.download,
+                label: 'Meus dados (visualizar/exportar)',
+                onTap: () => _showExportDataDialog(context, ref),
+              ),
+              _MenuItem(
+                icon: Icons.delete_forever,
+                label: 'Excluir minha conta e meus dados',
+                onTap: () => _showDeleteAccountDialog(context, ref),
+              ),
+              const SizedBox(height: 24),
               BigButton(
                 label: 'Sair da conta',
                 icon: Icons.logout,
@@ -91,6 +115,120 @@ class ProfileScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+}
+
+/// LGPD (direito de acesso/portabilidade): mostra os dados pessoais do
+/// usuário e permite copiá-los como JSON.
+Future<void> _showExportDataDialog(BuildContext context, WidgetRef ref) async {
+  showDialog(
+    context: context,
+    builder: (ctx) => FutureBuilder<Map<String, dynamic>>(
+      future: ref.read(authNotifierProvider.notifier).exportUserData(),
+      builder: (ctx, snapshot) {
+        Widget content;
+        String? json;
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          content = const SizedBox(
+            height: 80,
+            child: Center(child: CircularProgressIndicator()),
+          );
+        } else if (snapshot.hasError) {
+          content = Text('Não foi possível carregar seus dados: ${snapshot.error}',
+              style: const TextStyle(fontSize: 16));
+        } else {
+          json = const JsonEncoder.withIndent('  ').convert(snapshot.data);
+          content = SingleChildScrollView(
+            child: SelectableText(json,
+                style: const TextStyle(fontSize: 14, fontFamily: 'monospace')),
+          );
+        }
+        return AlertDialog(
+          title: const Text('Meus dados'),
+          content: SizedBox(width: 400, child: content),
+          actions: [
+            if (json != null)
+              TextButton(
+                onPressed: () {
+                  Clipboard.setData(ClipboardData(text: json!));
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(content: Text('Dados copiados!')),
+                  );
+                },
+                child: const Text('Copiar'),
+              ),
+            ElevatedButton(onPressed: () => Navigator.pop(ctx), child: const Text('Fechar')),
+          ],
+        );
+      },
+    ),
+  );
+}
+
+/// LGPD (direito de eliminação): confirma, reautentica e exclui a conta.
+Future<void> _showDeleteAccountDialog(BuildContext context, WidgetRef ref) async {
+  final confirmed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Excluir minha conta?'),
+      content: const Text(
+        'Isso vai apagar seu perfil e sua conta de acesso permanentemente. '
+        'Essa ação não pode ser desfeita. Deseja continuar?',
+        style: TextStyle(fontSize: 16),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancelar')),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
+          onPressed: () => Navigator.pop(ctx, true),
+          child: const Text('Excluir'),
+        ),
+      ],
+    ),
+  );
+  if (confirmed != true || !context.mounted) return;
+
+  final passwordController = TextEditingController();
+  final password = await showDialog<String>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Confirme sua senha'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Por segurança, digite sua senha para confirmar a exclusão.',
+              style: TextStyle(fontSize: 15, color: AppTheme.textMedium)),
+          const SizedBox(height: 12),
+          TextField(
+            controller: passwordController,
+            obscureText: true,
+            decoration: const InputDecoration(labelText: 'Senha'),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
+          onPressed: () => Navigator.pop(ctx, passwordController.text),
+          child: const Text('Confirmar exclusão'),
+        ),
+      ],
+    ),
+  );
+  if (password == null || password.isEmpty || !context.mounted) return;
+
+  try {
+    await ref.read(authNotifierProvider.notifier).reauthenticate(password);
+    await ref.read(authNotifierProvider.notifier).deleteAccount();
+    if (context.mounted) context.go('/login');
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Não foi possível excluir a conta: $e')),
+      );
+    }
   }
 }
 

@@ -76,4 +76,42 @@ class AuthService {
     if (!doc.exists) return null;
     return InviteKeyModel.fromFirestore(doc);
   }
+
+  /// LGPD: reautentica o usuário com e-mail/senha (exigido pelo Firebase
+  /// antes de operações sensíveis como excluir a conta).
+  Future<void> reauthenticate(String password) async {
+    final user = currentUser;
+    if (user == null || user.email == null) {
+      throw Exception('Sessão expirada. Faça login novamente.');
+    }
+    final credential =
+        EmailAuthProvider.credential(email: user.email!, password: password);
+    await user.reauthenticateWithCredential(credential);
+  }
+
+  /// LGPD (direito de eliminação): apaga o documento de perfil e a conta de
+  /// autenticação do usuário. Os demais dados da família permanecem, pois
+  /// pertencem coletivamente ao grupo familiar, não a este usuário isolado.
+  Future<void> deleteAccount() async {
+    final user = currentUser;
+    if (user == null) throw Exception('Sessão expirada. Faça login novamente.');
+    await _db.collection(AppConstants.usersCollection).doc(user.uid).delete();
+    await user.delete();
+  }
+
+  /// LGPD (direito de portabilidade/acesso): retorna uma cópia dos dados
+  /// pessoais do usuário em formato simples para visualização/exportação.
+  Future<Map<String, dynamic>> exportUserData() async {
+    final user = currentUser;
+    if (user == null) throw Exception('Sessão expirada. Faça login novamente.');
+    final doc =
+        await _db.collection(AppConstants.usersCollection).doc(user.uid).get();
+    final profile = doc.data() ?? {};
+    return {
+      'uid': user.uid,
+      'email': user.email,
+      'perfil': profile.map((key, value) =>
+          MapEntry(key, value is Timestamp ? value.toDate().toIso8601String() : value)),
+    };
+  }
 }

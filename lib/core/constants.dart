@@ -1,6 +1,7 @@
 class AppConstants {
   static const String appName = 'Cuidar+';
   static const String appVersion = '1.0.0';
+  static const String privacyPolicyVersion = '1.0';
 
   // Firestore collections
   static const String usersCollection = 'users';
